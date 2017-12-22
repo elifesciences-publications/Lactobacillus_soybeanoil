@@ -16,7 +16,8 @@
 #### weighteddistancemetricpairs.pl
 ###### perl script used in the creation of Figure 4B
 
-
+#### linoleicacid_threetimepointratio.R
+##### R commands for Figures 4E, 4–4, 2, 2-1A,B
 
 #### linoleicacidgrowthdata.txt
 ###### raw data for Figures 2 and 
