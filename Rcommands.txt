@@ -1,14 +1,12 @@
-#using Qiime 1.9.0
+# Qiime and R commands for Figures 4-2A,B,D, 4-3, 4C,D, 4-2, 4B  
 
-
-R commands for Figures 4-2A,B
-
+### using Qiime 1.9.0
+#please note that file paths should be adjusted to match your own environment
 
 #Check the mapping file
 validate_mapping_file.py -m mappingfile.txt -o output/
-#open up the html file, yellow = the program fixed and red = you must fix
 
-#Merging Reads (fastq-join and SeqPrep) and Filter reads > 200 nt
+#Merging Reads (fastq-join and SeqPrep) forward, reverse, and barcode; and Filter reads > 200 nt
 #using raw reads from all samples available on ENA PRJEB19690
 join_paired_ends.py -f R1_001.fastq -r R2_001.fastq -b I1_001.fastq -j 200 -o output/
 
@@ -18,13 +16,12 @@ split_libraries_fastq.py -i output/fastqjoin.join.fastq -o output/splitlibraries
 #open reference OTU picking to Greengenes database version 13.8 
 pick_open_reference_otus.py -i output/splitlibraries_outq25/seqs.fna -r gg_13_8_otus/rep_set/97_otus.fasta -o output/open_ref_otus
 
-
-root@ubuntu:/mnt/FAMIAP1Jeu_output/open_ref_otus# ls
-final_otu_map_mc2.txt   otu_table_mc2.biom                           rep_set.fna  step4_otus
-final_otu_map.txt       otu_table_mc2_w_tax.biom                     rep_set.tre  uclust_assigned_taxonomy
-log_20140718220105.txt  otu_table_mc2_w_tax_no_pynast_failures.biom  step1_otus
-log_20140718220330.txt  prefilter_otus                               step2_otus
-new_refseqs.fna         pynast_aligned_seqs                          step3_otus
+#the following file should have been created
+#final_otu_map_mc2.txt   otu_table_mc2.biom                           rep_set.fna  step4_otus
+#final_otu_map.txt       otu_table_mc2_w_tax.biom                     rep_set.tre  uclust_assigned_taxonomy
+#log_20140718220105.txt  otu_table_mc2_w_tax_no_pynast_failures.biom  step1_otus
+#log_20140718220330.txt  prefilter_otus                               step2_otus
+#new_refseqs.fna         pynast_aligned_seqs                          step3_otus
 
 #add parameters to beta diversity commands
 echo -e "make_emperor:add_unique_columns TRUE" > output/beta_params.txt 
@@ -55,6 +52,16 @@ filter_samples_from_otu_table.py -i output/open_ref_otus/wf_bdiv_40000/otu_table
 #Jackson mice, just HF diet mice, all biomass
 filter_samples_from_otu_table.py -i output/open_ref_otus/wf_bdiv_40000/otu_table_mc2_w_tax_even40000_AP4only_HF.biom -o output/open_ref_otus/wf_bdiv_40000/otu_table_mc2_w_tax_even40000_AP4only_HF_noPMA.biom -m mappingfile.txt -s "PMA:no"
 
+###End of Qiime commands
+###use the created files in following R scripts
+
+## R commands for Figure 4 – Figure supplement 2A and B 
+
+library("phyloseq")
+library("ggplot2")
+library("Biostrings")
+library("vegan")
+theme_set(theme_bw())
 
 #for the LF diet samples
 #import biom file
@@ -68,7 +75,6 @@ rank_names(AP4PMALFbiom)
 mappingfile<-import_qiime_sample_data("mappingfile.txt")
 merge_phyloseq(AP4PMALFbiom,mappingfile)
 AP4PMALFmap<-merge_phyloseq(AP4PMALFbiom,mappingfile)
-
 
 #for adonis
 #make a dataframe of the sample data and do weighted unifrac
@@ -93,7 +99,7 @@ adonis(formula = AP4PMALFweighteddm ~ Cage * Gavage, data = dflf)
 # ---
 #   Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 
-#To make Figure 4 – Figure supplement 2A 
+# To make Figure 4 – Figure supplement 2A 
 #note that the distance matrix will be different time it is is created so the percent variation on the axes will vary slightly
 AP4PMALFplotweighted= ordinate(AP4PMALFmap,method = "PCoA", "unifrac", weighted=TRUE)
 pdf(file="AP4LF_weighted_axes12_tdistribution.pdf",width = 6, height=4)
@@ -141,8 +147,8 @@ adonis(AP4PMAHFweighteddm ~ Cage*Gavage, data = dfHF)
 #  Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 
 
-#To make Figure 4 – Figure supplement 2B
-#note that the distance matrix will be different time it is is created so the percent variation on the axes will vary slightly
+# To make Figure 4 – Figure supplement 2B
+#note that the distance matrix will be different time it is created so the percent variation on the axes will vary slightly
 AP4PMAHFplotweighted= ordinate(AP4PMAHFmap,method = "PCoA", "unifrac", weighted=TRUE)
 pdf(file="AP4HF_weighted_axes12_tdistribution.pdf",width = 6, height=4)
 ordplot<-plot_ordination(AP4PMAHFmap, AP4PMAHFplotweighted, axes = c(1,2),  color="Gavage") 
@@ -151,13 +157,16 @@ ordplot + geom_point(size= 1) + xlab("PC 1 (62.1%)") + ylab ("PC 2 (18.9%)") +
   scale_colour_manual(values=c("violetred1", "steelblue1")) + stat_ellipse(type = "t", size=.6) 
 dev.off()
 
+### End of R commands
 
-#To make Figure 4 – Figure supplement 2D
+### using Qiime 1.9.0
+
+## To make Figure 4 – Figure supplement 2D
 #convert the biom files to text files for editing
 biom convert -i output/open_ref_otus/wf_bdiv_40000/otu_table_mc2_w_tax_even40000_AP4only_HF_PMA.biom -o output/open_ref_otus/wf_bdiv_40000/otu_table_mc2_w_tax_even40000_AP4only_LF_PMA.biom.txt --to-hdf5 --table-type="OTU table" --process-obs-metadata taxonomy
 biom convert -i output/open_ref_otus/wf_bdiv_40000/otu_table_mc2_w_tax_even40000_AP4only_HF_PMA.biom -o output/open_ref_otus/wf_bdiv_40000/otu_table_mc2_w_tax_even40000_AP4only_HF_PMA.biom.txt --to-hdf5 --table-type="OTU table" --process-obs-metadata taxonomy
 # to filter OTUs to includes only those at least 100 sequences and present in 25% of the samples
-#run biomedit.pl
+### run biomedit.pl in perl
 #convert the .txt files back to biom files
 biom convert -i output/open_ref_otus/wf_bdiv_40000/otu_table_mc2_w_tax_even40000_AP4only_HF_PMA_25percent_100greater.biom.txt -o output/open_ref_otus/wf_bdiv_40000/otu_table_mc2_w_tax_even40000_AP4only_HF_PMA_25percent_100greater.biom --to-hdf5 --table-type="OTU table" --process-obs-metadata taxonomy
 biom convert -i output/open_ref_otus/wf_bdiv_40000/otu_table_mc2_w_tax_even40000_AP4only_LF_PMA_25percent_100greater.biom.txt -o output/open_ref_otus/wf_bdiv_40000/otu_table_mc2_w_tax_even40000_AP4only_LF_PMA_25percent_100greater.biom --to-hdf5 --table-type="OTU table" --process-obs-metadata taxonomy
@@ -170,8 +179,9 @@ biom convert -i output/open_ref_otus/wf_bdiv_40000/groupsigOTUsFDR_filtered_even
 #make heat map
 make_otu_heatmap.py -i output/open_ref_otus/wf_bdiv_40000/groupsigOTUsFDR_filtered_even40000_AP4only_HF_PMA_otumorethan25percent_100greater.biom -o output/open_ref_otus/wf_bdiv_40000/groupsigOTUsFDR_filtered_even40000_AP4only_HF_PMA_otumorethan25percent_100greater_HeatmapGavagenolog -m mappingfile.txt -c Gavage --color_scheme summer --no_log_transform
 
+### End of Qiime commands
 
-#Figure 4 – Figure supplement 3
+### R commands for Figure 4 – Figure supplement 3, Figures 4C,D, Figure 4 – Figure supplement 2, Figure 4B
 
 library("plyr")
 library("reshape2")
@@ -196,7 +206,7 @@ colnames(OTUtableflip) <- c(as.character(unlist(OTUtableflip[1,])))
 names(OTUtableflip)<-colnames(OTUtableflip)
 OTUtableflip = OTUtableflip[-1, ]
 OTUtableflipdf<-as.data.frame(OTUtableflip)
-#same for the table not rarefied for the poop data
+#same for the table that is not rarefied for the poop data
 OTUtableflipnonrare<-t(as.matrix(OTUtablenonrare))
 colnames(OTUtableflipnonrare) <- c(as.character(unlist(OTUtableflipnonrare[1,])))
 names(OTUtableflipnonrare)<-colnames(OTUtableflipnonrare)
@@ -214,8 +224,6 @@ LRcol<-which(names(OTUtableflipdf)=="692154")
 LJcol<-which(names(OTUtableflipdf)=="592160")
 OTUnames<-c("692154","592160")
 names(mappingfile)[nextcolumn:lastcolumn]<-as.character(OTUnames)
-
-#make another identical table told hold the data rarefied at 10000
 mappingfileforpoop<-mappingfile
 
 
@@ -283,6 +291,7 @@ bxplot(`592160`/40000 ~ Diet, data = AP1subsetsort, width = .5, add = TRUE)
 beeswarm(`692154`/40000 ~ Diet, data = AP1subsetsort, cex = 2, cex.lab=1.4, pch=21, col=c( "black","black"),bg =c( "green","orange"), ylab="Relative Abundance", main="OTU 692154")
 bxplot(`692154`/40000 ~ Diet, data = AP1subsetsort, width = .5, add = TRUE)
 
+#for the poop data, only use samples with at least 10,000 counts
 AP1poop10000<-subset(mappingfileforpoop,mappingfileforpoop$FAMI=="FAMIAP1_poop" &mappingfileforpoop$SequenceCounts>=10000)
 AP1poop10000<-droplevels(AP1poop10000)
 AP1poop10000["Diet_Timepoint"]<-paste(AP1poop10000$Diet, ".W",AP1poop10000$timepoint,sep="")
@@ -294,7 +303,7 @@ beeswarm(`692154`/SequenceCounts ~ Diet_Timepoint, data = AP1poop10000sort, cex 
 bxplot(`692154`/SequenceCounts ~ Diet_Timepoint, data = AP1poop10000sort, width = .5, add = TRUE)
 
 
-#Figures 4C and D and Figure 4 - Figure supplement 2
+## Figures 4C and D and Figure 4 - Figure supplement 2
 library("lme4")
 library(ggplot2)
 #subset AP4
@@ -324,7 +333,7 @@ AP4noPMAsort<-arrange(AP4noPMA,xtfrm(Diet_Cage))
 AP4noPMAsort$Diet_Cage<-factor(AP4noPMAsort$Diet_Cage, levels=c("LF.239556","LF.239557","LF.239560", "LF.239562","LF.239564","LF.239567","HF.239558","HF.239559", "HF.239561" ,"HF.239563","HF.239565","HF.239566"))
 
 
-#Figures 4C
+#Figure 4C
 beeswarm(`692154`/40000 ~ DietPMA, data = AP4subsetsortnoPMAsaline, cex = 2, cex.lab=1.4, pch=21, col=c( "black","black"),bg =c( "green","orange"), ylab="Relative Abundance", main="OTU 692154", corral="wrap", spacing=.6)
 bxplot(`692154`/40000 ~ DietPMA, data = AP4subsetsortnoPMAsaline, width = .5, add = TRUE)
 
@@ -412,7 +421,7 @@ anova(reutmodel.null,reutmodel)
 # reutmodel       4 766.23 773.36 -379.11   758.23 2.292      1       0.13
 
 
-#Figures 4D
+#Figure 4D
 beeswarm(`592160`/40000 ~ DietPMA, data = AP4subsetsortnoPMAsaline, cex = 2, cex.lab=1.4, pch=21, col=c( "black","black"),bg =c( "green","orange"), ylab="Relative Abundance", main="OTU 692154", corral="wrap", spacing=.6)
 bxplot(`592160`/40000 ~ DietPMA, data = AP4subsetsortnoPMAsaline, width = .5, add = TRUE)
 
@@ -503,14 +512,11 @@ anova(johnmodel.null,johnmodel)
 # reutmodel.null  3 934.05 939.40 -464.02   928.05                         
 # reutmodel       4 935.59 942.73 -463.80   927.59 0.4557      1     0.4996
 
-#Figure 
 
-#plot by cage
+#Figure 4 – Figure supplement 2C
 AP4noPMA["Diet_Cage"]<-paste(AP4noPMA$Diet,".",AP4noPMA$Cage,sep="")
 AP4noPMAsort<-arrange(AP4noPMA,xtfrm(Diet_Cage))
 AP4noPMAsort$Diet_Cage<-factor(AP4noPMAsort$Diet_Cage, levels=c("LF.239556","LF.239557","LF.239560", "LF.239562","LF.239564","LF.239567","HF.239558","HF.239559", "HF.239561" ,"HF.239563","HF.239565","HF.239566"))
-
-#Figure 4 – Figure supplement 2C 
 
 ggplot(data=AP4noPMAsort) +
   geom_boxplot(aes(x=Diet_Cage, y=`692154`/40000, fill=Diet)) +
@@ -593,12 +599,3 @@ t.test(WeightedDistance~Gavage, data=subset(datafile, datafile$Diet=="HF") )
 # 0.1904963          0.0379180 
 
 
-##Figure 2, 4E, Figure 4S4 A-C
-
-#give them the growth curve data
-
-
-
-#R script
-
-#data for S4BC
