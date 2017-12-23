@@ -27,12 +27,9 @@
 ###### provides the information on the L. reuteri strains isolated from a variety of animals
 ###### used in the creation of Figure 2
 
-##Figure 2, 4E, Figure 4S4 A-C
+#### LactoGenomeAssembly.txt
+###### pipeline using spades, Bandage, and nucmer to assemble the parental strains (LR0 and LJO)
 
-#give them the growth curve data
+#### GATK.txt
+###### BWA-MEM, Picard, and GATK pipelines for identifying mutations in the strains and populations for evolved Lactobacilli
 
-
-
-#R script
-
-#data for S4BC
