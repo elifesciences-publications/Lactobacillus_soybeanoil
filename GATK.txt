@@ -1,0 +1,205 @@
+gunzip LactoGenomes060116/7002_7212_34677_APJJ1_LR5_AGTCAA_R1.fastq.gz
+gunzip LactoGenomes060116/7002_7212_34677_APJJ1_LR5_AGTCAA_R2.fastq.gz
+
+gunzip LactoGenomes062016/7002_7212_34677_AG0G7_LR5_AGTCAA_R1.fastq.gz
+gunzip LactoGenomes062016/7002_7212_34677_AG0G7_LR5_AGTCAA_R2.fastq.gz 
+
+cat LactoGenomes060116/7002_7212_34677_APJJ1_LR5_AGTCAA_R1.fastq LactoGenomes062016/7002_7212_34677_AG0G7_LR5_AGTCAA_R1.fastq > LactoGenomes062016/LR5seqsmerged_R1.fastq
+cat LactoGenomes060116/7002_7212_34677_APJJ1_LR5_AGTCAA_R2.fastq LactoGenomes062016/7002_7212_34677_AG0G7_LR5_AGTCAA_R2.fastq > LactoGenomes062016/LR5seqsmerged_R2.fastq
+
+
+scp scd82@rs-bt-leylab01.biotech.cornell.edu:/home/local/CORNELL/scd82/LactoGenomes062016/LR5seqsmerged_R1.fastq.gz .
+scp scd82@rs-bt-leylab01.biotech.cornell.edu:/home/local/CORNELL/scd82/LactoGenomes062016/LR5seqsmerged_R2.fastq.gz .
+
+gunzip LR5seqsmerged_R1.fastq.gz
+gunzip LR5seqsmerged_R2.fastq.gz
+
+
+#the following was performed for each population/strain
+#example commands are given
+
+#using BWA-MEM ************
+
+/workdir/scd82/LactoGenomes012517/LactoGenomes012517/spades_output/LR0_012517
+#to use BWA-MEM for first time:
+#first create an index of the database:
+#for L. reuteri, use the LR0 genome aligned to the TD1 genome:
+bwa index -p TD1_LR0 -a is TD1_LR0_abacasMerged_nucmerpromerwithplasmidhighcovpromer.MULTIFASTA_plasmidadded.fa
+#for L. johnsonii, use the LJ0 genome aligned to NCC533
+
+
+#align population or strain reads to the reference genome
+bwa mem -M TD1_LR0 LR0_LR5/LR5seqsmerged_R1.fastq LR0_LR5/LR5seqsmerged_R2.fastq > LR0_LR5/TD1_LR0_LR5_aln-pe_picard.sam
+
+#using picard
+
+export JAVA_HOME=/usr/local/jdk1.8.0_45
+export PATH=$JAVA_HOME/bin:$PATH
+
+#add read groups to the sam file -- required for gatk
+java -jar /programs/picard-tools-2.1.1/picard.jar AddOrReplaceReadGroups \
+I=LR0_LR5/TD1_LR0_LR5_aln-pe_picard.sam \
+O=LR0_LR5/TD1_LR0_LR5_aln-pe_Picardcorrected.sam \
+RGLB=012717 \
+RGPL=illumina \
+RGPU=unit13 \
+RGSM=LR5
+
+
+#clean and fix the sam file 
+java -jar /programs/picard-tools-2.1.1/picard.jar CleanSam \
+I=LR0_LR5/TD1_LR0_LR5_aln-pe_Picardcorrected.sam \
+O=LR0_LR5/TD1_LR0_LR5_aln-pe_PicardcorrectedCleaned.sam 
+
+java -jar /programs/picard-tools-2.1.1/picard.jar FixMateInformation \
+I=LR0_LR5/TD1_LR0_LR5_aln-pe_PicardcorrectedCleaned.sam \
+SO=coordinate \
+O=LR0_LR5/TD1_LR0_LR5_aln-pe_PicardcorrectedCleanedFixed.sam 
+
+
+#convert to bam
+java -jar /programs/picard-tools-2.1.1/picard.jar SamFormatConverter \
+I=LR0_LR5/TD1_LR0_LR5_aln-pe_PicardcorrectedCleanedFixed.sam \
+O=LR0_LR5/TD1_LR0_LR5_aln-pe_PicardcorrectedCleanedFixed.bam
+
+java -jar /programs/picard-tools-2.1.1/picard.jar ValidateSamFile \
+I=LR0_LR5/TD1_LR0_LR5_aln-pe_PicardcorrectedCleanedFixed.bam \
+MODE=SUMMARY
+
+
+#mark duplicate reads that could have arisen 
+java -jar /programs/picard-tools-2.1.1/picard.jar MarkDuplicates \
+I=LR0_LR5/TD1_LR0_LR5_aln-pe_PicardcorrectedCleanedFixed.bam \
+O=LR0_LR5/TD1_LR0_LR5_aln-pe_PicardcorrectedCleanedFixed_dedup_reads.bam \
+CREATE_INDEX=true \
+METRICS_FILE=LR0_LR5/TD1_LR0_LR5_aln-pe_PicardcorrectedCleanedFixed_dedup_reads_metrics.txt
+
+#create a dictionary of the assembled genome
+java -jar /programs/picard-tools-2.1.1/picard.jar CreateSequenceDictionary \
+R=TD1_LR0_abacasMerged_nucmerpromerwithplasmidhighcovpromer.MULTIFASTA_plasmidadded.fa \
+O=TD1_LR0_abacasMerged_nucmerpromerwithplasmidhighcovpromer.MULTIFASTA_plasmidadded.dict
+
+***using samtools
+
+samtools faidx TD1_LR0_abacasMerged_nucmerpromerwithplasmidhighcovpromer.MULTIFASTA_plasmidadded.fa
+
+***using GATK
+#realign to remove alignment errors
+java -jar /programs/bin/GATK/GenomeAnalysisTK.jar \
+-T RealignerTargetCreator \
+-R TD1_LR0_abacasMerged_nucmerpromerwithplasmidhighcovpromer.MULTIFASTA_plasmidadded.fa \
+-I LR0_LR5/TD1_LR0_LR5_aln-pe_PicardcorrectedCleanedFixed_dedup_reads.bam  \
+-o LR0_LR5/TD1_LR0_LR5_aln-pe_PicardcorrectedCleanedFixed_dedup_reads_IndelRealigner.intervals
+
+#realign around indels
+java -jar /programs/bin/GATK/GenomeAnalysisTK.jar \
+-T IndelRealigner \
+-R TD1_LR0_abacasMerged_nucmerpromerwithplasmidhighcovpromer.MULTIFASTA_plasmidadded.fa \
+-I LR0_LR5/TD1_LR0_LR5_aln-pe_PicardcorrectedCleanedFixed_dedup_reads.bam \
+-targetIntervals LR0_LR5/TD1_LR0_LR5_aln-pe_PicardcorrectedCleanedFixed_dedup_reads_IndelRealigner.intervals \
+-o LR0_LR5/TD1_LR0_LR5_aln-pe_PicardcorrectedCleanedFixed_dedup_reads_IndelRealigner_realigned.bam \
+--filter_bases_not_stored
+
+
+#use this to get the coverage to be used in haplotype caller
+java -jar /programs/bin/GATK/GenomeAnalysisTK.jar  \
+-T DepthOfCoverage \
+-R TD1_LR0_abacasMerged_nucmerpromerwithplasmidhighcovpromer.MULTIFASTA_plasmidadded.fa \
+-o LR0_LR5/TD1_LR0_LR5_aln-pe_PicardcorrectedCleanedFixed_dedup_reads_IndelRealigner_realigned_recal_depth \
+-I LR0_LR5/TD1_LR0_LR5_aln-pe_PicardcorrectedCleanedFixed_dedup_reads_IndelRealigner_realigned.bam \
+--start 500 \
+--stop 8000 \
+--nBins 500 \
+--outputFormat csv
+
+
+##look at the depth coverage to figure out what the max reads should be in the HaplotypeCaller
+##needed to call variants here in this sample, use 1400
+
+
+#BaseRecalibrator
+java -jar /programs/bin/GATK/GenomeAnalysisTK.jar \
+-T BaseRecalibrator \
+-R TD1_LR0_abacasMerged_nucmerpromerwithplasmidhighcovpromer.MULTIFASTA_plasmidadded.fa \
+-I LR0_LR5/TD1_LR0_LR5_aln-pe_PicardcorrectedCleanedFixed_dedup_reads_IndelRealigner_realigned.bam \
+-knownSites LR0_LR21/TD1_LR0_LR21_aln-pe_PicardcorrectedCleanedFixed_dedup_reads_IndelRealigner_realigned_edit.vcf \
+-bqsrBAQGOP 30 \
+-o LR0_LR5/TD1_LR0_LR5_aln-pe_PicardcorrectedCleanedFixed_dedup_reads_IndelRealigner_realigned.bam_recal_data.table
+
+
+#Filter reads to apply the recalibration
+java -jar /programs/bin/GATK/GenomeAnalysisTK.jar \
+-T PrintReads \
+-R TD1_LR0_abacasMerged_nucmerpromerwithplasmidhighcovpromer.MULTIFASTA_plasmidadded.fa \
+-I LR0_LR5/TD1_LR0_LR5_aln-pe_PicardcorrectedCleanedFixed_dedup_reads_IndelRealigner_realigned.bam \
+-BQSR LR0_LR5/TD1_LR0_LR5_aln-pe_PicardcorrectedCleanedFixed_dedup_reads_IndelRealigner_realigned.bam_recal_data.table \
+-o LR0_LR5/TD1_LR0_LR5_aln-pe_PicardcorrectedCleanedFixed_dedup_reads_IndelRealigner_realigned_recal.bam
+
+java -jar /programs/bin/GATK/GenomeAnalysisTK.jar \
+-T BaseRecalibrator \
+-R TD1_LR0_abacasMerged_nucmerpromerwithplasmidhighcovpromer.MULTIFASTA_plasmidadded.fa \
+-I LR0_LR5/TD1_LR0_LR5_aln-pe_PicardcorrectedCleanedFixed_dedup_reads_IndelRealigner_realigned_recal.bam \
+-knownSites LR0_LR21/TD1_LR0_LR21_aln-pe_PicardcorrectedCleanedFixed_dedup_reads_IndelRealigner_realigned_edit.vcf \
+-bqsrBAQGOP 30 \
+-BQSR LR0_LR5/TD1_LR0_LR5_aln-pe_PicardcorrectedCleanedFixed_dedup_reads_IndelRealigner_realigned.bam_recal_data.table \
+-o LR0_LR5/TD1_LR0_LR5_aln-pe_PicardcorrectedCleanedFixed_dedup_reads_IndelRealigner_realigned.bam_recal_data_after.table
+
+
+#make plots of how the recalibration performed
+java -jar /programs/bin/GATK/GenomeAnalysisTK.jar \
+-T AnalyzeCovariates \
+-R TD1_LR0_abacasMerged_nucmerpromerwithplasmidhighcovpromer.MULTIFASTA_plasmidadded.fa \
+-before LR0_LR5/TD1_LR0_LR5_aln-pe_PicardcorrectedCleanedFixed_dedup_reads_IndelRealigner_realigned.bam_recal_data.table \
+--intermediateCsvFile LR0_LR5/TD1_LR0_LR5_aln-pe_PicardcorrectedCleanedFixed_dedup_reads_IndelRealigner_realigned.bam_recal_intermediateCsvFile \
+-after LR0_LR5/TD1_LR0_LR5_aln-pe_PicardcorrectedCleanedFixed_dedup_reads_IndelRealigner_realigned.bam_recal_data_after.table \
+-plots LR0_LR5/TD1_LR0_LR5_aln-pe_PicardcorrectedCleanedFixed_dedup_reads_IndelRealigner_realigned.bam_recalQC.pdf
+
+#run the HaplotypeCaller to find mutations
+#note that for strains the sample_ploidy should be 1
+java -jar /programs/bin/GATK/GenomeAnalysisTK.jar \
+-T HaplotypeCaller \
+-R TD1_LR0_abacasMerged_nucmerpromerwithplasmidhighcovpromer.MULTIFASTA_plasmidadded.fa \
+--maxReadsInRegionPerSample 1400 \
+-stand_call_conf 10 \
+-stand_emit_conf 4 \
+--pcr_indel_model NONE \
+--sample_ploidy 10 \
+-I LR0_LR5/TD1_LR0_LR5_aln-pe_PicardcorrectedCleanedFixed_dedup_reads_IndelRealigner_realigned_recal.bam \
+--emitRefConfidence GVCF \
+-o LR0_LR5/TD1_LR0_LR5_aln-pe_PicardcorrectedCleanedFixed_dedup_reads_IndelRealigner_realigned_recal.raw.snps.indelslowlevelhighercovplidy10.g.vcf
+
+
+#after running the HaplotypeCaller on all populations and strains separately, then run all identified mutations in all samples together to increase the confidence of any identified mutation
+
+java -jar /programs/bin/GATK/GenomeAnalysisTK.jar \
+-T GenotypeGVCFs \
+-R BWA/LR_TD1database/TD1_LR1_abacasnucmer_abacasunalignedbynucmerpromerhighcovwithplasmidpromerplasmidaddedback.MULTIFASTA.fa \
+--variant BWA/LR_TD1database/LJ0/TD1_LR1_LJ0_aln-pe_PicardcorrectedCleanedFixed_dedup_reads_IndelRealigner_realigned_recal.raw.snps.indelslowlevel.g.vcf \
+--variant BWA/LR_TD1database/LR1/TD1_LR1_LR1_aln-pe_PicardcorrectedCleanedFixed_dedup_reads_IndelRealigner_realigned_recal.raw.snps.indelslowlevelhighercovploidy10.g.vcf \
+--variant BWA/LR_TD1database/LR2/TD1_LR1_LR2_aln-pe_PicardcorrectedCleanedFixed_dedup_reads_IndelRealigner_realigned_recal.raw.snps.indelslowlevelhighercovploidy10.g.vcf \
+--variant BWA/LR_TD1database/LR3/TD1_LR1_LR3_aln-pe_PicardcorrectedCleanedFixed_dedup_reads_IndelRealigner_realigned_recal.raw.snps.indelslowlevelhighercovplidy10.g.vcf \
+--variant BWA/LR_TD1database/LR4/TD1_LR1_LR4_aln-pe_PicardcorrectedCleanedFixed_dedup_reads_IndelRealigner_realigned_recal.raw.snps.indelslowlevelhighercovploidy10.g.vcf \
+--variant BWA/LR_TD1database/LR5/TD1_LR1_LR5_aln-pe_PicardcorrectedCleanedFixed_dedup_reads_IndelRealigner_realigned_recal.raw.snps.indelslowlevelhighercovplidy10.g.vcf \
+--variant BWA/LR_TD1database/LR21/TD1_LR1_LR21_aln-pe_PicardcorrectedCleanedFixed_dedup_reads_IndelRealigner_realigned_recal.raw.snps.indelslowlevel.g.vcf \
+--variant BWA/LR_TD1database/LRHF/TD1_LR1_LRHF_aln-pe_PicardcorrectedCleanedFixed_dedup_reads_IndelRealigner_realigned_recal.raw.snps.indelslowlevel.g.vcf \
+--sample_ploidy 10 \
+-stand_call_conf 10 \
+-stand_emit_conf 4 \
+-o BWA/LR_TD1database/LRpopulationslowlevelhighcovploidy10_allsamples_output.vcf
+
+#print out the results
+java -jar /programs/bin/GATK/GenomeAnalysisTK.jar \
+-R BWA/LR_TD1database/TD1_LR1_abacasnucmer_abacasunalignedbynucmerpromerhighcovwithplasmidpromerplasmidaddedback.MULTIFASTA.fa \
+-T VariantsToTable \
+-V BWA/LR_TD1database/LRpopulationslowlevelhighcovploidy10_allsamples_output.vcf \
+-F CHROM -F POS -F ID -F REF -F ALT -F QUAL -F FILTER -F AC -F DP -F QD \
+-GF GT -GF AD -GF DP \
+-SMA \
+-AMD \
+-o BWA/LR_TD1database/LRpopulationslowlevelhighcovploidy10_allsamples_output.table
+
+
+
+
+
+
