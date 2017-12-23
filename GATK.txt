@@ -1,24 +1,7 @@
-gunzip LactoGenomes060116/7002_7212_34677_APJJ1_LR5_AGTCAA_R1.fastq.gz
-gunzip LactoGenomes060116/7002_7212_34677_APJJ1_LR5_AGTCAA_R2.fastq.gz
-
-gunzip LactoGenomes062016/7002_7212_34677_AG0G7_LR5_AGTCAA_R1.fastq.gz
-gunzip LactoGenomes062016/7002_7212_34677_AG0G7_LR5_AGTCAA_R2.fastq.gz 
-
-cat LactoGenomes060116/7002_7212_34677_APJJ1_LR5_AGTCAA_R1.fastq LactoGenomes062016/7002_7212_34677_AG0G7_LR5_AGTCAA_R1.fastq > LactoGenomes062016/LR5seqsmerged_R1.fastq
-cat LactoGenomes060116/7002_7212_34677_APJJ1_LR5_AGTCAA_R2.fastq LactoGenomes062016/7002_7212_34677_AG0G7_LR5_AGTCAA_R2.fastq > LactoGenomes062016/LR5seqsmerged_R2.fastq
-
-
-scp scd82@rs-bt-leylab01.biotech.cornell.edu:/home/local/CORNELL/scd82/LactoGenomes062016/LR5seqsmerged_R1.fastq.gz .
-scp scd82@rs-bt-leylab01.biotech.cornell.edu:/home/local/CORNELL/scd82/LactoGenomes062016/LR5seqsmerged_R2.fastq.gz .
-
-gunzip LR5seqsmerged_R1.fastq.gz
-gunzip LR5seqsmerged_R2.fastq.gz
-
-
 #the following was performed for each population/strain
-#example commands are given
+#example commands are given for L. reuteri
 
-#using BWA-MEM ************
+####using BWA-MEM
 
 /workdir/scd82/LactoGenomes012517/LactoGenomes012517/spades_output/LR0_012517
 #to use BWA-MEM for first time:
@@ -31,7 +14,7 @@ bwa index -p TD1_LR0 -a is TD1_LR0_abacasMerged_nucmerpromerwithplasmidhighcovpr
 #align population or strain reads to the reference genome
 bwa mem -M TD1_LR0 LR0_LR5/LR5seqsmerged_R1.fastq LR0_LR5/LR5seqsmerged_R2.fastq > LR0_LR5/TD1_LR0_LR5_aln-pe_picard.sam
 
-#using picard
+####using Picard
 
 export JAVA_HOME=/usr/local/jdk1.8.0_45
 export PATH=$JAVA_HOME/bin:$PATH
@@ -79,11 +62,11 @@ java -jar /programs/picard-tools-2.1.1/picard.jar CreateSequenceDictionary \
 R=TD1_LR0_abacasMerged_nucmerpromerwithplasmidhighcovpromer.MULTIFASTA_plasmidadded.fa \
 O=TD1_LR0_abacasMerged_nucmerpromerwithplasmidhighcovpromer.MULTIFASTA_plasmidadded.dict
 
-***using samtools
+###using samtools
 
 samtools faidx TD1_LR0_abacasMerged_nucmerpromerwithplasmidhighcovpromer.MULTIFASTA_plasmidadded.fa
 
-***using GATK
+###using GATK
 #realign to remove alignment errors
 java -jar /programs/bin/GATK/GenomeAnalysisTK.jar \
 -T RealignerTargetCreator \
