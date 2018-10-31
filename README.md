@@ -1,3 +1,7 @@
+
+### This code is associated with the paper from Di Rienzi et al., "Resilience of small intestinal beneficial bacteria to the toxicity of soybean oil fatty acids". eLife, 2018. http://dx.doi.org/10.7554/eLife.32581
+
+
 #Lactobacillus_soybeanoil
 
 #The files in this repository are the qiime, R, perl, and other bash commands utilized to process the data in the project, "Resilience of small intestinal lactobacilli to the toxicity of soybean oil fatty acids"
